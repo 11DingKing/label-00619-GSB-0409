@@ -1,0 +1,63 @@
+# IDE
+.idea/
+.vscode/
+.cursor/
+.kiro/
+*.iml
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# .NET
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.mdb
+*.cache
+*.nupkg
+*.snupkg
+
+# Build
+dist/
+build/
+out/
+publish/
+target/
+
+# Environment
+.env
+.env.local
+*.log
+appsettings.Development.json
+appsettings.Local.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Node (for any tooling)
+node_modules/
+
+# NuGet
+packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# === AllGood SOP 流程产物（非项目交付物，勿提交） ===
+draft.md
+*-report.md
+.port-overrides.json
+.sop-summary.md
+.allgood-sop

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>ProjectFileManager.Wpf</RootNamespace>
+    <ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Eto.Forms" Version="2.8.1" />
+    <PackageReference Include="Eto.Platform.Wpf" Version="2.8.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProjectFileManager.Desktop\ProjectFileManager.Desktop.csproj" />
+  </ItemGroup>
+
+  <!-- 复制前端资源到输出目录 -->
+  <ItemGroup>
+    <None Include="..\..\frontend\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="web" />
+  </ItemGroup>
+
+</Project>

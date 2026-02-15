@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>ProjectFileManager.Mac</RootNamespace>
+    <!-- 自动检测当前架构 -->
+    <RuntimeIdentifier Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">osx-arm64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'">osx-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Eto.Forms" Version="2.8.1" />
+    <PackageReference Include="Eto.Platform.Mac64" Version="2.8.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProjectFileManager.Desktop\ProjectFileManager.Desktop.csproj" />
+  </ItemGroup>
+
+  <!-- 复制前端资源到输出目录 -->
+  <ItemGroup>
+    <None Include="..\..\frontend\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="web" />
+  </ItemGroup>
+
+</Project>
