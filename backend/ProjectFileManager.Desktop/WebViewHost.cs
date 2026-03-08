@@ -202,11 +202,18 @@ public class WebViewHost
             var itemsPerRow = _configService.GetItemsPerRow();
             var showHidden = _configService.GetShowHiddenFiles();
             var lastPath = _configService.GetLastOpenedPath();
+            var sortSettings = _configService.GetSortSettings();
             
-            // 优先使用命令行传入的当前工作目录，否则使用主目录
-            var currentPath = !string.IsNullOrEmpty(_initialWorkDir) && Directory.Exists(_initialWorkDir) 
-                ? _initialWorkDir 
-                : homePath;
+            // 启动目录优先级：保存的最后路径 > 启动参数工作目录 > 用户主目录
+            var currentPath = homePath;
+            if (!string.IsNullOrWhiteSpace(lastPath) && Directory.Exists(lastPath))
+            {
+                currentPath = lastPath;
+            }
+            else if (!string.IsNullOrWhiteSpace(_initialWorkDir) && Directory.Exists(_initialWorkDir))
+            {
+                currentPath = _initialWorkDir;
+            }
             
             Log.Information("初始目录: {CurrentPath}", currentPath);
             
@@ -225,6 +232,8 @@ public class WebViewHost
                     downloadsPath: {JsonConvert.SerializeObject(downloadsPath)},
                     itemsPerRow: {itemsPerRow},
                     showHiddenFiles: {(showHidden ? "true" : "false")},
+                    sortBy: {JsonConvert.SerializeObject(sortSettings.SortBy)},
+                    sortOrder: {JsonConvert.SerializeObject(sortSettings.SortOrder)},
                     lastOpenedPath: {JsonConvert.SerializeObject(lastPath ?? "")},
                     currentPath: {JsonConvert.SerializeObject(currentPath)},
                     directoryTree: {treeJson},

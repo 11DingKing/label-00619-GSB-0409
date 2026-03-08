@@ -521,7 +521,8 @@ async function refreshDirectoryTree(path) {
 }
 
 // 加载文件列表
-async function loadFiles(append = false) {
+async function loadFiles(append = false, options = {}) {
+    const showErrorToast = options.showErrorToast !== false;
     if (state.isLoading || (!append && !state.hasMore)) return;
 
     state.isLoading = true;
@@ -550,9 +551,14 @@ async function loadFiles(append = false) {
         state.page++;
 
         renderFiles(items, append);
+        return true;
     } catch (error) {
         console.error('加载文件失败:', error);
-        showToast(getErrorMessage(error, '加载文件失败'), 'error');
+        const message = getErrorMessage(error, '加载文件失败');
+        if (showErrorToast) {
+            showToast(message, 'error');
+        }
+        return false;
     } finally {
         state.isLoading = false;
     }
@@ -781,10 +787,37 @@ function searchFiles(keyword) {
 
 // 刷新
 async function refresh() {
+    if (state.isLoading) {
+        showToast('刷新失败：当前正在加载，请稍后重试', 'error');
+        return;
+    }
+
     state.page = 1;
     state.hasMore = true;
-    await loadFiles();
-    showToast('已刷新');
+    const ok = await loadFiles(false, { showErrorToast: false });
+    if (ok) {
+        showToast('刷新成功', 'success');
+    } else {
+        showToast('刷新失败：加载文件失败', 'error');
+    }
+}
+
+// 保存配置
+async function saveConfig() {
+    try {
+        await bridge.call('setItemsPerRow', { count: state.itemsPerRow });
+        await bridge.call('setShowHiddenFiles', { show: state.showHiddenFiles });
+        await bridge.call('setConfig', { key: 'sort_by', value: state.sortBy });
+        await bridge.call('setConfig', { key: 'sort_order', value: state.sortOrder });
+        if (state.currentPath && state.currentPath !== '收藏' && state.currentPath.startsWith('/')) {
+            await bridge.call('setLastOpenedPath', { path: state.currentPath });
+        }
+        showToast('保存配置成功', 'success');
+    } catch (error) {
+        console.error('保存配置失败:', error);
+        const message = getErrorMessage(error, '保存配置失败');
+        showToast(`保存配置失败：${message}`, 'error');
+    }
 }
 
 // 更新每行数量
@@ -915,6 +948,8 @@ function initWithPreloadedData() {
     // 应用配置
     state.itemsPerRow = data.itemsPerRow || 4;
     state.showHiddenFiles = data.showHiddenFiles || false;
+    state.sortBy = data.sortBy || 'name';
+    state.sortOrder = data.sortOrder || 'asc';
     state.currentPath = data.currentPath || data.homePath || '/';
     
     document.getElementById('fileItems').style.setProperty('--items-per-row', state.itemsPerRow);
@@ -944,7 +979,7 @@ function initWithPreloadedData() {
     }
     
     // 更新面包屑
-    updateBreadcrumb();
+    renderBreadcrumb(state.currentPath);
     
     // 绑定事件
     bindEvents();
@@ -962,6 +997,8 @@ async function initApp() {
     // 加载配置
     state.itemsPerRow = await bridge.call('getItemsPerRow') || 4;
     state.showHiddenFiles = await bridge.call('getShowHiddenFiles') || false;
+    state.sortBy = await bridge.call('getConfig', { key: 'sort_by' }) || 'name';
+    state.sortOrder = await bridge.call('getConfig', { key: 'sort_order' }) || 'asc';
 
     // 应用配置
     document.getElementById('fileItems').style.setProperty('--items-per-row', state.itemsPerRow);
@@ -994,6 +1031,9 @@ async function initApp() {
 function bindEvents() {
     var btnRefresh = document.getElementById('btnRefresh');
     if (btnRefresh) btnRefresh.addEventListener('click', refresh);
+
+    var btnSave = document.getElementById('btnSave');
+    if (btnSave) btnSave.addEventListener('click', saveConfig);
 
     var searchInput = document.getElementById('searchInput');
     var searchClear = document.getElementById('searchClear');
@@ -1049,10 +1089,32 @@ function bindEvents() {
     var sortMenu = document.getElementById('sortMenu');
     if (btnSort && sortMenu) {
         btnSort.addEventListener('click', function(e) {
-            var rect = e.target.getBoundingClientRect();
-            sortMenu.style.display = sortMenu.style.display === 'none' ? 'block' : 'none';
-            sortMenu.style.left = rect.left + 'px';
-            sortMenu.style.top = (rect.top - sortMenu.offsetHeight - 8) + 'px';
+            e.stopPropagation();
+            var isHidden = sortMenu.style.display === 'none' || !sortMenu.style.display;
+            sortMenu.style.display = isHidden ? 'block' : 'none';
+            if (!isHidden) return;
+
+            // 始终基于按钮本体定位，避免点到 SVG 子元素导致坐标异常
+            var rect = btnSort.getBoundingClientRect();
+            var menuRect = sortMenu.getBoundingClientRect();
+            var left = rect.right - menuRect.width;
+            var top = rect.top - menuRect.height - 8;
+
+            // 顶部空间不足时，改为向下展开
+            if (top < 8) {
+                top = rect.bottom + 8;
+            }
+
+            // 水平边界保护，避免菜单超出视口造成“被遮挡”观感
+            if (left + menuRect.width > window.innerWidth - 8) {
+                left = window.innerWidth - menuRect.width - 8;
+            }
+            if (left < 8) {
+                left = 8;
+            }
+
+            sortMenu.style.left = left + 'px';
+            sortMenu.style.top = top + 'px';
             document.querySelectorAll('.sort-menu-item[data-sort]').forEach(function(item) {
                 item.classList.toggle('active', item.dataset.sort === state.sortBy);
             });
@@ -1144,6 +1206,10 @@ function bindEvents() {
             e.preventDefault();
             if (searchInput) searchInput.focus();
         }
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            saveConfig();
+        }
     });
 
     // 懒加载
@@ -1166,10 +1232,12 @@ window.app = {
     refresh,
     navigateTo,
     searchFiles,
-    showFavorites
+    showFavorites,
+    saveConfig
 };
 window.showFavorites = showFavorites;
 window.searchFiles = searchFiles;
+window.saveConfig = saveConfig;
 
 // 启动应用
 document.addEventListener('DOMContentLoaded', init);
